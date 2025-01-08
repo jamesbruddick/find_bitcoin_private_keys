@@ -86,8 +86,9 @@ def find_and_process_private_keys(input_file="input_bitcoin_private_keys.txt", o
 			private_key = private_key.strip()
 			if len(private_key) in {51, 52}:
 				private_key = decode_wif_private_key(private_key)
+			private_key = private_key.upper()
 			if private_key not in found_private_keys:
-				unique_private_keys.add(private_key.upper())
+				unique_private_keys.add(private_key)
 
 	for private_key in unique_private_keys:
 		uncompressed_pubkey, compressed_pubkey = generate_public_keys(private_key)
