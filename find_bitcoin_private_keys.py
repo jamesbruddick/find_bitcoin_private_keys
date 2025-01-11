@@ -6,6 +6,7 @@ input_file = "input_bitcoin_private_keys.txt"
 output_file = "found_bitcoin_private_keys.txt"
 batch_limit = 50
 
+found_private_keys = set()
 unique_private_keys = set()
 print_prefix = "\033[1;107m Find Bitcoin Private Keys \033[0m"
 
@@ -102,19 +103,21 @@ def process_public_addresses(private_keys_with_public_addresses, input_file, out
 			private_key = next(private_key for key_pair in private_keys_with_public_addresses for private_key, public_addresses in key_pair.items() if public_address in public_addresses)
 			found_prefix = "\033[1;103m Found:\033[0m\033[93m" if data["final_balance"] > 0 else "\033[1;102m Found:\033[0m\033[92m"
 			print(f"{print_prefix}{found_prefix} Address: {public_address}, Private Key: {private_key}, Transactions: {data["n_tx"]}, Balance: {data["final_balance"]}\033[0m")
-			with open(output_file, "a") as file:
-				file.write(f"{private_key}\n")
-			return
+			if private_key not in found_private_keys:
+				found_private_keys.add(private_key)
+				with open(output_file, "a") as file:
+					file.write(f"{private_key}\n")
 
 def find_and_process_private_keys(input_file, output_file):
 	"""Main function to process private keys and find addresses with balances or transactions"""
 	try:
 		with open(output_file, "r") as found:
-			found_private_keys = set(found.read().strip().split("\n"))
+			found_private_keys.update(found.read().strip().split("\n"))
 	except FileNotFoundError:
-		found_private_keys = set()
+		pass
 
 	try:
+		print(f"{print_prefix}\033[1;100m Input:\033[0m Processing {input_file} ...\033[0m", end="\r")
 		with open(input_file, "r") as file:
 			for private_key in file:
 				private_key = private_key.strip()
