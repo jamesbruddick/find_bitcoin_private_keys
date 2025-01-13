@@ -17,11 +17,11 @@ This Python script identifies and saves private keys linked to Bitcoin addresses
 
 ### 1. Prepare the Input File
 
-Create a file named `input_bitcoin_private_keys.txt`. This file should contain Bitcoin private keys, either in WIF (Wallet Import Format) or hexadecimal format. Each private key should be listed on a new line.
+Create a file named `input_bitcoin_private_keys.txt`. This file should contain Bitcoin private keys, either in WIF (Wallet Import Format) or hexadecimal format with each private key listed on a new line.
 
 ### 2. Install Dependencies
 
-If you haven't installed the required dependencies, run the following command to install them using `requirements.txt`:
+If you haven't installed the required dependencies, run the following command to install them:
 
 ```bash
 pip install -r requirements.txt
