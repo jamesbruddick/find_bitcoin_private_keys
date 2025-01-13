@@ -4,10 +4,11 @@ from bech32 import encode
 
 input_file = "input_bitcoin_private_keys.txt"
 output_file = "found_bitcoin_private_keys.txt"
-batch_limit = 50
+batch_limit = 100
 
 found_private_keys = set()
 unique_private_keys = set()
+total_unique_private_keys = 0
 print_prefix = "\033[1;107m Find Bitcoin Private Keys \033[0m"
 
 def is_valid_private_key(private_key):
@@ -69,7 +70,7 @@ def fetch_addresses_info(public_addresses, max_retries=3, delay=20):
 def save_unprocessed_private_keys(input_file):
 	"""Save unprocessed private keys to input file"""
 	with open(input_file, "w") as file:
-		for private_key in sorted(list(unique_private_keys)):
+		for private_key in list(unique_private_keys):
 			file.write(f"{private_key}\n")
 
 def dedupe_and_sort_output(output_file):
@@ -99,10 +100,11 @@ def process_public_addresses(private_keys_with_public_addresses, input_file, out
 		sys.exit(1)
 
 	for public_address, data in all_public_addresses_info.items():
+		private_key = next(private_key for key_pair in private_keys_with_public_addresses for private_key, public_addresses in key_pair.items() if public_address in public_addresses)
+		print(f"{print_prefix}\033[1;100m Search:\033[0m {private_key} | Searched: [{total_unique_private_keys - len(unique_private_keys)} / {total_unique_private_keys}]", end="\r")
 		if data["n_tx"] > 0:
-			private_key = next(private_key for key_pair in private_keys_with_public_addresses for private_key, public_addresses in key_pair.items() if public_address in public_addresses)
 			found_prefix = "\033[1;103m Found:\033[0m\033[93m" if data["final_balance"] > 0 else "\033[1;102m Found:\033[0m\033[92m"
-			print(f"{print_prefix}{found_prefix} Address: {public_address}, Private Key: {private_key}, Transactions: {data["n_tx"]}, Balance: {data["final_balance"]}\033[0m")
+			print(f"\033[2K{print_prefix}{found_prefix} {private_key} | Address: {public_address}, Transactions: {data["n_tx"]}, Balance: {data["final_balance"]}\033[0m")
 			if private_key not in found_private_keys:
 				found_private_keys.add(private_key)
 				with open(output_file, "a") as file:
@@ -110,6 +112,8 @@ def process_public_addresses(private_keys_with_public_addresses, input_file, out
 
 def find_and_process_private_keys(input_file, output_file):
 	"""Main function to process private keys and find addresses with balances or transactions"""
+	global total_unique_private_keys
+
 	try:
 		with open(output_file, "r") as found:
 			found_private_keys.update(found.read().strip().split("\n"))
@@ -128,14 +132,14 @@ def find_and_process_private_keys(input_file, output_file):
 					if private_key not in found_private_keys:
 						unique_private_keys.add(private_key)
 
+		total_unique_private_keys = len(unique_private_keys)
 		save_unprocessed_private_keys(input_file)
 	except FileNotFoundError:
 		print(f"\033[2K\033[0G{print_prefix}\033[1;101m Error:\033[0m\033[91m Input file {input_file} not found!\033[0m")
 		sys.exit(1)
 
 	while unique_private_keys:
-		private_keys = sorted(unique_private_keys)[:batch_limit]
-		print(f"{print_prefix}\033[1;100m Search:\033[0m {private_keys[0]} ... {private_keys[-1]}", end="\r")
+		private_keys = list(unique_private_keys)[:batch_limit]
 		private_keys_with_public_addresses = generate_addresses_from_private_keys(private_keys)
 		process_public_addresses(private_keys_with_public_addresses, input_file, output_file)
 		unique_private_keys.difference_update(private_keys)
