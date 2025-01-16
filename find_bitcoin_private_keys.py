@@ -6,7 +6,7 @@ INPUT_FILE = "input_bitcoin_private_keys.txt"
 OUTPUT_FILE = "found_bitcoin_private_keys.txt"
 BATCH_LIMIT = 100
 FETCH_RETRY = 3
-FETCH_DELAY = 20
+FETCH_DELAY = 30
 
 found_private_keys = set()
 unique_private_keys = set()
@@ -51,7 +51,6 @@ def generate_addresses_from_private_keys(private_keys):
 def fetch_addresses_info(public_addresses, retries, delay):
 	"""Fetch balance and transaction information from Blockchain API"""
 	url = "https://blockchain.info/balance?active=" + "|".join(public_addresses)
-
 	for attempt in range(retries):
 		try:
 			response = requests.get(url)
@@ -66,6 +65,7 @@ def fetch_addresses_info(public_addresses, retries, delay):
 
 def save_unprocessed_private_keys(input_file):
 	"""Save unprocessed private keys to input file"""
+	global unique_private_keys
 	with open(input_file, "w") as file:
 		for private_key in list(unique_private_keys):
 			file.write(f"{private_key}\n")
@@ -80,11 +80,13 @@ def dedupe_and_sort_output(output_file):
 
 def process_public_addresses(private_keys_with_public_addresses, input_file, output_file, fetch_retry=3, fetch_delay=20):
 	"""Process public addresses found from private keys"""
+	global total_unique_private_keys, unique_private_keys
 	all_public_addresses = []
 
 	for key_pair in private_keys_with_public_addresses:
 		for public_addresses in key_pair.values():
-			all_public_addresses.extend(public_addresses)
+			filtered_public_addresses = [address for address in public_addresses if "charts" not in address.lower()]
+			all_public_addresses.extend(filtered_public_addresses)
 
 	all_public_addresses_info = fetch_addresses_info(all_public_addresses, fetch_retry, fetch_delay)
 
@@ -99,7 +101,7 @@ def process_public_addresses(private_keys_with_public_addresses, input_file, out
 		print(f"\033[1;107m Find Bitcoin Private Keys \033[0m\033[1;100m Search:\033[0m {private_key} | Searched: [{total_unique_private_keys - len(unique_private_keys)} / {total_unique_private_keys}]", end="\r")
 		if data["n_tx"] > 0:
 			found_prefix = "\033[1;103m Found:\033[0m\033[93m" if data["final_balance"] > 0 else "\033[1;102m Found:\033[0m\033[92m"
-			print(f"\033[2K\033[1;107m Find Bitcoin Private Keys \033[0m{found_prefix} {private_key} | Address: {public_address}, Transactions: {data["n_tx"]}, Balance: {data["final_balance"]}\033[0m")
+			print(f"\033[2K\033[1;107m Find Bitcoin Private Keys \033[0m{found_prefix} {private_key} | {public_address} | Transactions: {data['n_tx']}, Balance: {data['final_balance']}\033[0m")
 			if private_key not in found_private_keys:
 				found_private_keys.add(private_key)
 				with open(output_file, "a") as file:
@@ -107,7 +109,7 @@ def process_public_addresses(private_keys_with_public_addresses, input_file, out
 
 def find_and_process_private_keys(input_file, output_file, batch_limit, fetch_retry, fetch_delay):
 	"""Main function to process private keys and find addresses with balances or transactions"""
-	global total_unique_private_keys
+	global total_unique_private_keys, unique_private_keys
 
 	try:
 		with open(output_file, "r") as found:
