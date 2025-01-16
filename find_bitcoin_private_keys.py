@@ -4,6 +4,7 @@ from bech32 import encode
 
 INPUT_FILE = "input_bitcoin_private_keys.txt"
 OUTPUT_FILE = "found_bitcoin_private_keys.txt"
+BALANCE_FILE = "found_bitcoin_balance.txt"
 BATCH_LIMIT = 100
 FETCH_RETRY = 3
 FETCH_DELAY = 30
@@ -78,7 +79,7 @@ def dedupe_and_sort_output(output_file):
 	with open(output_file, "w") as file:
 		file.write("\n".join(unique_lines) + "\n")
 
-def process_public_addresses(private_keys_with_public_addresses, input_file, output_file, fetch_retry=3, fetch_delay=20):
+def process_public_addresses(private_keys_with_public_addresses, input_file, output_file, balance_file, fetch_retry=3, fetch_delay=20):
 	"""Process public addresses found from private keys"""
 	global total_unique_private_keys, unique_private_keys
 	all_public_addresses = []
@@ -102,12 +103,15 @@ def process_public_addresses(private_keys_with_public_addresses, input_file, out
 		if data["n_tx"] > 0:
 			found_prefix = "\033[1;103m Found:\033[0m\033[93m" if data["final_balance"] > 0 else "\033[1;102m Found:\033[0m\033[92m"
 			print(f"\033[2K\033[1;107m Find Bitcoin Private Keys \033[0m{found_prefix} {private_key} | {public_address} | Transactions: {data['n_tx']}, Balance: {data['final_balance']}\033[0m")
+			if data["final_balance"] > 0:
+				with open(balance_file, "a") as file:
+					file.write(f"{private_key},{public_address}\n")
 			if private_key not in found_private_keys:
 				found_private_keys.add(private_key)
 				with open(output_file, "a") as file:
 					file.write(f"{private_key}\n")
 
-def find_and_process_private_keys(input_file, output_file, batch_limit, fetch_retry, fetch_delay):
+def find_and_process_private_keys(input_file, output_file, balance_file, batch_limit, fetch_retry, fetch_delay):
 	"""Main function to process private keys and find addresses with balances or transactions"""
 	global total_unique_private_keys, unique_private_keys
 
@@ -135,7 +139,7 @@ def find_and_process_private_keys(input_file, output_file, batch_limit, fetch_re
 	while unique_private_keys:
 		private_keys = list(unique_private_keys)[:batch_limit]
 		private_keys_with_public_addresses = generate_addresses_from_private_keys(private_keys)
-		process_public_addresses(private_keys_with_public_addresses, input_file, output_file, fetch_retry, fetch_delay)
+		process_public_addresses(private_keys_with_public_addresses, input_file, output_file, balance_file, fetch_retry, fetch_delay)
 		unique_private_keys.difference_update(private_keys)
 
 	save_unprocessed_private_keys(input_file)
@@ -145,7 +149,7 @@ def find_and_process_private_keys(input_file, output_file, batch_limit, fetch_re
 
 if __name__ == "__main__":
 	try:
-		find_and_process_private_keys(INPUT_FILE, OUTPUT_FILE, BATCH_LIMIT, FETCH_RETRY, FETCH_DELAY)
+		find_and_process_private_keys(INPUT_FILE, OUTPUT_FILE, BALANCE_FILE, BATCH_LIMIT, FETCH_RETRY, FETCH_DELAY)
 	except KeyboardInterrupt:
 		print(f"\033[2K\033[0G\033[1;107m Find Bitcoin Private Keys \033[0m\033[1;101m Error:\033[0m\033[91m KeyboardInterrupt! Exiting...\033[0m")
 		save_unprocessed_private_keys(INPUT_FILE)
